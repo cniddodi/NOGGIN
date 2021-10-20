@@ -21,7 +21,8 @@ import Krige
 import os
 import sys
 
-import h5py
+#import h5py
+from netCDF4 import Dataset
 import json
 # from math import *
 import matplotlib as mpl
@@ -31,7 +32,7 @@ from matplotlib.patches import Polygon
 # from mpl_toolkits.basemap import Basemap
 import numpy as np
 
-from pyhdf.SD import SD, SDC
+#from pyhdf.SD import SD, SDC
 
 import pykrige
 from   pykrige.ok import OrdinaryKriging
@@ -451,303 +452,317 @@ The shape of the orig_? arrays is used to format the datasets written to output 
 type_hint == 'swath' => Save data as a fake swath.
 
 type_hint == 'grid'  => Try to reinterpret the POINT (irregular) data grid type as a rectangular grid and save it to HDF as a grid."""
-        if self.type_hint == 'swath':
-            self.save_swath()
-        elif self.type_hint == 'grid':
+        if self.type_hint == 'grid':
             self.save_grid()
+        elif self.type_hint == 'swath':
+            self.save_swath()
         else:
             print('krigeHDF.save type_hint=="'+str(type_hint)+'" not understood. Returning')
 
     def save_grid(self):
         # print '!!!krigeHDF.save_grid NOT IMPLEMENTED!!!'
         # return
+        #ref: https://pyhogs.github.io/intro_netcdf4.html
+        #ref: https://unidata.github.io/netcdf4-python/#variables-in-a-netcdf-file 
+        #with h5py.File(self.output_filename,'w') as f:
+        f = Dataset(self.output_filename, 'w', format='NETCDF4') 
+        ny = self.krg_y.size
+        nx = self.krg_x.size
 
-        with h5py.File(self.output_filename,'w') as f:
-            ny = self.krg_y.size
-            nx = self.krg_x.size
+        # TODO: Check that data geometry is GRID
 
-            # TODO: Check that data geometry is GRID
+        # Group: /HDFEOS
+        grp_1 = f.createGroup('HDFEOS')
+    
+    
+        # Group: /HDFEOS/NOGGIN
+        grp_2 = grp_1.createGroup('NOGGIN')
+    
+    
+        # Group: /HDFEOS/NOGGIN/KrigeResult2
+        grp_3 = grp_2.createGroup('KrigeResult2')
 
-            # Group: /HDFEOS
-            grp_1 = f.create_group('HDFEOS')
+        #if self.config is not None:
+        #    grp_4 = grp_3.createGroup('KrigeCalculationConfiguration')
+        #    # TODO: Encapsulate this logic in a configuration object.
+        #    dset = grp_4.create_dataset('configuration.json',data=self.config.as_json())
+        #    dset.attrs['json'] = self.config.as_json()
+    
+        # Group: /HDFEOS/NOGGIN/KrigeResult2/Data Fields
+        grp_4 = grp_3.createGroup('Data Fields')
+        grp_4.createDimension('latdim', ny)
+        grp_4.createDimension('londim', nx)
+        grp_4.createDimension('timdim', 1)
         
+        # Dataset: /HDFEOS/NOGGIN/KrigeResult2/Data Fields/latitude
+        dt = np.dtype('<f4')
+        dset = grp_4.createVariable('latitude', dt, 'latdim')
+        # initialize dataset values here
+        # TODO: Lot's of assumptions here
+        dset[:] = self.krg_y[:]
+        dset.units = 'degrees_north'
+        dset._CoordinateAxisType = "Lat"
         
-            # Group: /HDFEOS/NOGGIN
-            grp_2 = grp_1.create_group('NOGGIN')
+        # Dataset: /HDFEOS/NOGGIN/KrigeResult2/Data Fields/longitude
+        dt = np.dtype('<f4')
+        dset = grp_4.createVariable('longitude', dt, 'londim')
+        # initialize dataset values here
+        # TODO: Lot's of assumptions here
+        dset[:] = self.krg_x[:]
+        dset.units = 'degrees_east'
+        dset._CoordinateAxisType = "Lon"
         
+        # Dataset: /HDFEOS/NOGGIN/KrigeResult2/Data Fields/time
+        dt = np.dtype('<f4')
+        dset = grp_4.createVariable('time', dt, 'timdim')
+        # initialize dataset values here
+        dset[:] = 0.0
+        dset.units = "seconds since 1993-01-01 00:00:00.000000Z"            
+        dset._CoordinateAxisType = "Time"
         
-            # Group: /HDFEOS/NOGGIN/KrigeResult2
-            grp_3 = grp_2.create_group('KrigeResult2')
+        datafields_base='/HDFEOS/NOGGIN/KrigeResult2/Data Fields/'
+        datafields_added = []
 
-            if self.config is not None:
-                grp_4 = grp_3.create_group('KrigeCalculationConfiguration')
-                # TODO: Encapsulate this logic in a configuration object.
-                dset = grp_4.create_dataset('configuration.json',data=self.config.as_json())
-                dset.attrs['json'] = self.config.as_json()
-        
-            # Group: /HDFEOS/NOGGIN/KrigeResult2/Data Fields
-            grp_4 = grp_3.create_group('Data Fields')
-            
-            # Dataset: /HDFEOS/NOGGIN/KrigeResult2/Data Fields/latitude
-            dt = np.dtype('<f4')
-            dset = grp_4.create_dataset('latitude', (ny,), maxshape=(ny,), dtype=dt)
+        if self.orig_and_krg is not None:
+            # Dataset
+            dt = np.dtype('<f8')
+            variable_name = self.orig_name.split('/')[-1]+'_orig_and_krg'
+            dset = grp_4.createVariable(variable_name, dt, ('latdim','londim'))
             # initialize dataset values here
-            # TODO: Lot's of assumptions here
-            dset[:] = self.krg_y[:]
-            dset.attrs['units'] = 'degrees_north'
-            dset.attrs['_CoordinateAxisType'] = "Lat"
-            
-            # Dataset: /HDFEOS/NOGGIN/KrigeResult2/Data Fields/longitude
-            dt = np.dtype('<f4')
-            dset = grp_4.create_dataset('longitude', (nx,), maxshape=(nx,), dtype=dt)
-            # initialize dataset values here
-            # TODO: Lot's of assumptions here
-            dset[:] = self.krg_x[:]
-            dset.attrs['units'] = 'degrees_east'
-            dset.attrs['_CoordinateAxisType'] = "Lon"
-            
-            # Dataset: /HDFEOS/NOGGIN/KrigeResult2/Data Fields/time
-            dt = np.dtype('<f4')
-            dset = grp_4.create_dataset('time', (1,), maxshape=(1,), dtype=dt)
-            # initialize dataset values here
-            dset[:] = 0.0
-            dset.attrs['units'] = "seconds since 1993-01-01 00:00:00.000000Z"            
-            dset.attrs['_CoordinateAxisType'] = "Time"
-            
-            datafields_base='/HDFEOS/NOGGIN/KrigeResult2/Data Fields/'
-            datafields_added = []
+            dset[:,:] = self.orig_and_krg
+            # Creating attributes 
+            dset.units = self.krg_units
+            dset.coordinates = "latitude longitude"
+            dset.source_variable = self.orig_name
+            datafields_added.append(datafields_base+variable_name)
 
-            if self.orig_and_krg is not None:
-                # Dataset
+        if self.orig_z is not None:
+            dt = np.dtype('<f8')
+            variable_name = self.orig_name.split('/')[-1]+'_orig'
+            dset = grp_4.createVariable(variable_name, dt, ('latdim','londim'))
+            # initialize dataset values here
+            dset[:,:] = self.orig_z
+            # Creating attributes for /HDFEOS/NOGGIN/KrigeResult1/Data Fields/temperature
+            dset.units = self.orig_units
+            dset.coordinates = "latitude longitude"
+            dset.source_variable = self.orig_name
+            datafields_added.append(datafields_base+variable_name)
+
+        if self.krg is not None:
+            variable_name = self.orig_name.split('/')[-1]+'_krg'
+            dset = grp_4.createVariable(variable_name, dt, ('latdim','londim'))
+            # initialize dataset values here
+            dset[:,:] = self.krg
+            # Creating attributes
+            dset.units = self.krg_units
+            dset.coordinates = "latitude longitude"
+            dset.source_variable = self.orig_name
+            datafields_added.append(datafields_base+variable_name)
+
+        if self.config is not None:
+            if self.s is not None:
+                variable_name = self.orig_name.split('/')[-1]+"_uncertainty"
                 dt = np.dtype('<f8')
-                variable_name = self.orig_name.split('/')[-1]+'_orig_and_krg'
-                dset = grp_4.create_dataset(variable_name, (ny,nx), maxshape=(ny,nx), dtype=dt)
+                dset = grp_4.createVariable(variable_name, dt, ('latdim','londim'))
                 # initialize dataset values here
-                dset[:,:] = self.orig_and_krg
-                # Creating attributes 
-                dset.attrs      ['units'] = self.krg_units
-                dset.attrs['coordinates'] = "latitude longitude"
-                dset.attrs['source_variable'] = self.orig_name
-                datafields_added.append(datafields_base+variable_name)
-
-            if self.orig_z is not None:
-                dt = np.dtype('<f8')
-                variable_name = self.orig_name.split('/')[-1]+'_orig'
-                dset = grp_4.create_dataset(variable_name, (ny,nx), maxshape=(ny,nx), dtype=dt)
-                # initialize dataset values here
-                dset[:,:] = self.orig_z
-                # Creating attributes for /HDFEOS/NOGGIN/KrigeResult1/Data Fields/temperature
-                dset.attrs['units'] = self.orig_units
-                dset.attrs['coordinates'] = "latitude longitude"
-                dset.attrs['source_variable'] = self.orig_name
-                datafields_added.append(datafields_base+variable_name)
-
-            if self.krg is not None:
-                variable_name = self.orig_name.split('/')[-1]+'_krg'
-                dset = grp_4.create_dataset(variable_name, (ny,nx), maxshape=(ny,nx), dtype=dt)
-                # initialize dataset values here
-                dset[:,:] = self.krg
+                dset[:,:] = np.sqrt(self.s)
                 # Creating attributes
-                dset.attrs['units'] = self.krg_units
-                dset.attrs['coordinates'] = "latitude longitude"
-                dset.attrs['source_variable'] = self.orig_name
+                dset.units = self.krg_units
+                dset.coordinates = "latitude longitude"
+                dset.source_variable = self.orig_name
                 datafields_added.append(datafields_base+variable_name)
-
-            if self.config is not None:
-                if self.s is not None:
-                    variable_name = self.orig_name.split('/')[-1]+"_uncertainty"
-                    dt = np.dtype('<f8')
-                    dset = grp_4.create_dataset(variable_name, (ny,nx), maxshape=(ny,nx), dtype=dt)
-                    # initialize dataset values here
-                    dset[:,:] = np.sqrt(self.s)
-                    # Creating attributes
-                    dset.attrs['units'] = self.krg_units
-                    dset.attrs['coordinates'] = "latitude longitude"
-                    dset.attrs['source_variable'] = self.orig_name
-                    datafields_added.append(datafields_base+variable_name)
-                    
-                    if (self.s is not None) and (self.krg is not None):
-                        variable_name = self.orig_name.split('/')[-1]+"_relative_uncertainty"
-                        dt = np.dtype('<f8')
-                        dset = grp_4.create_dataset(variable_name, (ny,nx), maxshape=(ny,nx), dtype=dt)
-                        # initialize dataset values here
-                        tmp = np.zeros(self.s.shape)
-                        tmp[:,:] = np.sqrt(self.s)/self.krg
-                        tmp[np.where(tmp == np.inf)] = np.nan
-                        dset[:,:] = tmp 
-                        # Creating attributes
-                        dset.attrs['units'] = 'dimensionless'
-                        dset.attrs['coordinates'] = "latitude longitude"
-                        dset.attrs['source_variable'] = self.orig_name
-                        datafields_added.append(datafields_base+variable_name)
-
-            
-            # Group: /HDFEOS INFORMATION
-            grp_1 = f.create_group('HDFEOS INFORMATION')
-            
-            # Dataset: /HDFEOS INFORMATION/StructMetadata.0
-            dt = np.dtype('S1')
-            dset = grp_1.create_dataset('StructMetadata.0', (), dtype=dt)
-            # initialize dataset values here
-
-            #
-            # Adding dimensions
-            #
-            
-            # Creating dimension scales
-            h5py.h5ds.set_scale(f['/HDFEOS/NOGGIN/KrigeResult2/Data Fields/latitude'].id)
-            h5py.h5ds.set_scale(f['/HDFEOS/NOGGIN/KrigeResult2/Data Fields/longitude'].id)
-            h5py.h5ds.set_scale(f['/HDFEOS/NOGGIN/KrigeResult2/Data Fields/time'].id)
-
-            # print('f: keys: '+str(f.keys()))
-            # print('f: keys: '+str(f['/HDFEOS'].keys()))
-            # print('f: keys: '+str(f['/HDFEOS/KrigeResult2'].keys()))
-            # print('f: keys: '+str(f['/HDFEOS/KrigeResult2/Data Fields'].keys()))
-            # 
-            # tmp0 = f['/HDFEOS/NOGGIN/KrigeResult2/Data Fields']
-            # tmp1 = f['/HDFEOS/NOGGIN/KrigeResult2/Data Fields/latitude']
-            
-            # Attaching dimension scales to dataset: /HDFEOS/NOGGIN/KrigeResult2/Data Fields/...
-            for df in datafields_added:
-                f[df].dims[0].attach_scale(f['/HDFEOS/NOGGIN/KrigeResult2/Data Fields/latitude'])
-                f[df].dims[1].attach_scale(f['/HDFEOS/NOGGIN/KrigeResult2/Data Fields/longitude'])
                 
-            # Close the file (Not needed with 'with')
-            # f.close()
+                if (self.s is not None) and (self.krg is not None):
+                    variable_name = self.orig_name.split('/')[-1]+"_relative_uncertainty"
+                    dt = np.dtype('<f8')
+                    dset = grp_4.createVariable(variable_name, dt, ('latdim','londim'))
+                    # initialize dataset values here
+                    tmp = np.zeros(self.s.shape)
+                    tmp[:,:] = np.sqrt(self.s)/self.krg
+                    tmp[np.where(tmp == np.inf)] = np.nan
+                    dset[:,:] = tmp 
+                    # Creating attributes
+                    dset.units = 'dimensionless'
+                    dset.coordinates = "latitude longitude"
+                    dset.source_variable = self.orig_name
+                    datafields_added.append(datafields_base+variable_name)
+
+        
+        # Group: /HDFEOS INFORMATION
+        grp_1 = f.createGroup('HDFEOS INFORMATION')
+        
+        # Dataset: /HDFEOS INFORMATION/StructMetadata.0
+        dt = np.dtype('S1')
+        dset = grp_1.createVariable('StructMetadata.0', dt)
+        # initialize dataset values here
+
+        #
+        # Adding dimensions
+        #
+        
+        # Creating dimension scales
+        #h5py.h5ds.set_scale(f['/HDFEOS/NOGGIN/KrigeResult2/Data Fields/latitude'].id)
+        #h5py.h5ds.set_scale(f['/HDFEOS/NOGGIN/KrigeResult2/Data Fields/longitude'].id)
+        #h5py.h5ds.set_scale(f['/HDFEOS/NOGGIN/KrigeResult2/Data Fields/time'].id)
+
+        # print('f: keys: '+str(f.keys()))
+        # print('f: keys: '+str(f['/HDFEOS'].keys()))
+        # print('f: keys: '+str(f['/HDFEOS/KrigeResult2'].keys()))
+        # print('f: keys: '+str(f['/HDFEOS/KrigeResult2/Data Fields'].keys()))
+        # 
+        # tmp0 = f['/HDFEOS/NOGGIN/KrigeResult2/Data Fields']
+        # tmp1 = f['/HDFEOS/NOGGIN/KrigeResult2/Data Fields/latitude']
+        
+        # Attaching dimension scales to dataset: /HDFEOS/NOGGIN/KrigeResult2/Data Fields/...
+        #for df in datafields_added:
+            #f[df].dims[0].attach_scale(f['/HDFEOS/NOGGIN/KrigeResult2/Data Fields/latitude'])
+            #f[df].dims[1].attach_scale(f['/HDFEOS/NOGGIN/KrigeResult2/Data Fields/longitude'])
+                
+        # Close the file (Not needed with 'with')
+        f.close()
         
     def save_swath(self):
         """Save the krige, source, and krige+source data to a file. This fakes a 'swath' format, but misses some subtleties, as it is actually an irregular grid and not a swath. Seems to work for data that is actually a grid. Should figure out a way to control the format of the file and provide information about the 'grid.' This is necessary if we want the krige output to be compatible with NOGGIn regridding."""
-        with h5py.File(self.output_filename,'w') as f:
+        #ref: https://pyhogs.github.io/intro_netcdf4.html
+        #ref: https://unidata.github.io/netcdf4-python/#variables-in-a-netcdf-file 
+        #with h5py.File(self.output_filename,'w') as f:
+        f = Dataset(self.output_filename, 'w', format='NETCDF4')
 
-            nx,ny = self.x2.shape
+        nx,ny = self.x2.shape
 
-            # Group: /HDFEOS
-            grp_1 = f.create_group('HDFEOS')
-            
-            # Group: /HDFEOS/NOGGIN
-            grp_2 = grp_1.create_group('NOGGIN')
-            
-            # Group: /HDFEOS/NOGGIN/KrigeResult1
-            grp_3 = grp_2.create_group('KrigeResult1')
+        # Group: /HDFEOS
+        grp_1 = f.createGroup('HDFEOS')
+        
+        # Group: /HDFEOS/NOGGIN
+        grp_2 = grp_1.createGroup('NOGGIN')
+        
+        # Group: /HDFEOS/NOGGIN/KrigeResult1
+        grp_3 = grp_2.createGroup('KrigeResult1')
 
-            if self.config is not None:
-                grp_4 = grp_3.create_group('KrigeCalculationConfiguration')
-                # TODO: Encapsulate this logic in a configuration object.
-                dset = grp_4.create_dataset('configuration.json',data=self.config.as_json())
-                dset.attrs['json'] = self.config.as_json()
-            
-            # Group: /HDFEOS/SWATHS/Swath2953/Geolocation Fields (HPD original)
-            # Group: /HDFEOS/NOGGIN/KrigeResult1/Geolocation Fields
-            grp_4 = grp_3.create_group('Geolocation Fields')
+        #if self.config is not None:
+        #    grp_4 = grp_3.create_group('KrigeCalculationConfiguration')
+        #    # TODO: Encapsulate this logic in a configuration object.
+        #    dset = grp_4.create_dataset('configuration.json',data=self.config.as_json())
+        #    dset.attrs['json'] = self.config.as_json()
+        
+        # Group: /HDFEOS/SWATHS/Swath2953/Geolocation Fields (HPD original)
+        # Group: /HDFEOS/NOGGIN/KrigeResult1/Geolocation Fields
+        grp_4 = grp_3.createGroup('Geolocation Fields')
+        grp_4.createDimension('latdim', ny)
+        grp_4.createDimension('londim', nx)
+        grp_4.createDimension('timdim', 1)
 
 # TODO need to go back to some sort of 2D array.
-            # Dataset: /HDFEOS/NOGGIN/KrigeResult1/Geolocation Fields/Latitude
+        # Dataset: /HDFEOS/NOGGIN/KrigeResult1/Geolocation Fields/Latitude
+        dt = np.dtype('<f8')
+        dset = grp_4.createVariable('Latitude', dt, ('londim','latdim'))
+        # initialize dataset values here
+        dset[:,:] = self.y2
+        
+        # Creating attributes for /HDFEOS/NOGGIN/KrigeResult1/Geolocation Fields/Latitude
+        dset.units = "degrees_north"
+        
+        # Dataset: /HDFEOS/NOGGIN/KrigeResult1/Geolocation Fields/Longitude
+        dt = np.dtype('<f8')
+        dset = grp_4.createVariable('Longitude', dt, ('londim','latdim'))
+        # initialize dataset values here
+        dset[:,:] = self.x2
+        
+        # Creating attributes for /HDFEOS/NOGGIN/KrigeResult1/Geolocation Fields/Longitude
+        dset.units = "degrees_east"
+        
+        # Dataset: /HDFEOS/NOGGIN/KrigeResult1/Geolocation Fields/Time
+        dt = np.dtype('<f8')
+        dset = grp_4.createVariable('Time', dt, 'timdim')
+        # initialize dataset values here
+        dset[:] = 0.0
+                    
+        # Creating attributes for /HDFEOS/NOGGIN/KrigeResult1/Geolocation Fields/Time
+        # TODO This is probably incorrect
+        dset.units = "seconds since 1993-01-01 00:00:00.000000Z"
+        
+        # Group: /HDFEOS/NOGGIN/KrigeResult1/Data Fields
+        grp_4 = grp_3.createGroup('Data Fields')
+        grp_4.createDimension('latdim', ny)
+        grp_4.createDimension('londim', nx)
+        grp_4.createDimension('timdim', 1)
+
+        if self.orig_and_krg is not None:
+            # Dataset: /HDFEOS/NOGGIN/KrigeResult1/Data Fields/temperature
             dt = np.dtype('<f8')
-            dset = grp_4.create_dataset('Latitude', (nx,ny), maxshape=(nx,ny), dtype=dt)
+            dset = grp_4.createVariable(self.orig_name.split('/')[-1]+'_orig_and_krg', dt, ('londim','latdim'))
             # initialize dataset values here
-            dset[:,:] = self.y2
-            
-            # Creating attributes for /HDFEOS/NOGGIN/KrigeResult1/Geolocation Fields/Latitude
-            dset.attrs['units'] = "degrees_north"
-            
-            # Dataset: /HDFEOS/NOGGIN/KrigeResult1/Geolocation Fields/Longitude
-            dt = np.dtype('<f8')
-            dset = grp_4.create_dataset('Longitude', (nx,ny), maxshape=(nx,ny), dtype=dt)
+            dset[:,:] = self.orig_and_krg
+            # Creating attributes for /HDFEOS/NOGGIN/KrigeResult1/Data Fields/temperature
+            dset.units = self.krg_units
+            dset.coordinates = "latitude longitude"
+            dset.source_variable = self.orig_name
+
+        if self.orig_z is not None:
+            dset = grp_4.createVariable(self.orig_name.split('/')[-1], dt, ('londim','latdim'))
             # initialize dataset values here
-            dset[:,:] = self.x2
-            
-            # Creating attributes for /HDFEOS/NOGGIN/KrigeResult1/Geolocation Fields/Longitude
-            dset.attrs['units'] = "degrees_east"
-            
-            # Dataset: /HDFEOS/NOGGIN/KrigeResult1/Geolocation Fields/Time
-            dt = np.dtype('<f8')
-            dset = grp_4.create_dataset('Time', (1,), maxshape=(1,), dtype=dt)
+            dset[:,:] = self.orig_z
+            # Creating attributes for /HDFEOS/NOGGIN/KrigeResult1/Data Fields/temperature
+            dset.units = self.orig_units
+            dset.coordinates = "latitude longitude"
+            dset.source_variable = self.orig_name
+
+        if self.krg is not None:
+            dset = grp_4.createVariable(self.krg_name.split('/')[-1], dt, ('londim','latdim'))
             # initialize dataset values here
-            dset[:] = 0.0
-                        
-            # Creating attributes for /HDFEOS/NOGGIN/KrigeResult1/Geolocation Fields/Time
-            # TODO This is probably incorrect
-            dset.attrs['units'] = "seconds since 1993-01-01 00:00:00.000000Z"
-            
-            # Group: /HDFEOS/NOGGIN/KrigeResult1/Data Fields
-            grp_4 = grp_3.create_group('Data Fields')
+            dset[:,:] = self.krg
+            # Creating attributes for /HDFEOS/NOGGIN/KrigeResult1/Data Fields/temperature
+            dset.units = self.krg_units
+            dset.coordinates = "latitude longitude"
+            dset.source_variable = self.orig_name
 
-            if self.orig_and_krg is not None:
-                # Dataset: /HDFEOS/NOGGIN/KrigeResult1/Data Fields/temperature
-                dt = np.dtype('<f8')
-                dset = grp_4.create_dataset(self.orig_name.split('/')[-1]+'_orig_and_krg', (nx,ny), maxshape=(nx,ny), dtype=dt)
-                # initialize dataset values here
-                dset[:,:] = self.orig_and_krg
-                # Creating attributes for /HDFEOS/NOGGIN/KrigeResult1/Data Fields/temperature
-                dset.attrs['units'] = self.krg_units
-                dset.attrs['coordinates'] = "latitude longitude"
-                dset.attrs['source_variable'] = self.orig_name
-
-            if self.orig_z is not None:
-                dset = grp_4.create_dataset(self.orig_name.split('/')[-1], (nx,ny), maxshape=(nx,ny), dtype=dt)
-                # initialize dataset values here
-                dset[:,:] = self.orig_z
-                # Creating attributes for /HDFEOS/NOGGIN/KrigeResult1/Data Fields/temperature
-                dset.attrs['units'] = self.orig_units
-                dset.attrs['coordinates'] = "latitude longitude"
-                dset.attrs['source_variable'] = self.orig_name
-
-            if self.krg is not None:
-                dset = grp_4.create_dataset(self.krg_name.split('/')[-1], (nx,ny), maxshape=(nx,ny), dtype=dt)
-                # initialize dataset values here
-                dset[:,:] = self.krg
-                # Creating attributes for /HDFEOS/NOGGIN/KrigeResult1/Data Fields/temperature
-                dset.attrs['units'] = self.krg_units
-                dset.attrs['coordinates'] = "latitude longitude"
-                dset.attrs['source_variable'] = self.orig_name
-
-            if self.s is not None:
-                dset = grp_4.create_dataset(self.krg_name.split('/')[-1]+"_uncertainty", (nx,ny), maxshape=(nx,ny), dtype=dt)
-                # initialize dataset values here
-                dset[:,:] = np.sqrt(self.s)
-                # Creating attributes for /HDFEOS/NOGGIN/KrigeResult1/Data Fields/temperature
-                dset.attrs['units'] = self.krg_units
-                dset.attrs['coordinates'] = "latitude longitude"
-                dset.attrs['source_variable'] = self.orig_name
-
-            if (self.s is not None) and (self.krg is not None):
-                dset = grp_4.create_dataset(self.krg_name.split('/')[-1]+"_relative_uncertainty", (nx,ny), maxshape=(nx,ny), dtype=dt)
-                # initialize dataset values here
-                tmp = np.zeros(self.s.shape)
-                tmp[:,:] = np.sqrt(self.s)/self.krg
-                tmp[np.where(tmp == np.inf)] = np.nan
-                dset[:,:] = tmp 
-                # Creating attributes for /HDFEOS/NOGGIN/KrigeResult1/Data Fields/temperature
-                dset.attrs['units'] = 'dimensionless'
-                dset.attrs['coordinates'] = "latitude longitude"
-                dset.attrs['source_variable'] = self.orig_name
-            
-            # Group: /HDFEOS INFORMATION
-            grp_1 = f.create_group('HDFEOS INFORMATION')
-            
-            # Dataset: /HDFEOS INFORMATION/StructMetadata.0
-            dt = np.dtype('S1')
-            dset = grp_1.create_dataset('StructMetadata.0', (), dtype=dt)
+        if self.s is not None:
+            dset = grp_4.createVariable(self.krg_name.split('/')[-1]+"_uncertainty", dt, ('londim','latdim'))
             # initialize dataset values here
-            
-            # METADATA STRUCTURE
-            
-            # Close the file
-            # f.close()
-            
-            # dset = f.create_dataset('metadata.json'\
-            #                         ,data=json.dumps(\
-            #                                          {"npts":self.npts\
-            #                                           ,"log_calc":self.log_calc\
-            #                                           ,"note":self.note\
-            #                                           ,"vg_name":self.vg_name\
-            #                                          }\
-            #                                          ,sort_keys=True))
-            
-            # dset = f.create_dataset(self.zVariableName,data=self.z)
-            # dset = f.create_dataset(self.zVariableName+'_s',data=self.s)
-            # dset = f.create_dataset('x',data=self.x)
-            # dset = f.create_dataset('y',data=self.y)
+            dset[:,:] = np.sqrt(self.s)
+            # Creating attributes for /HDFEOS/NOGGIN/KrigeResult1/Data Fields/temperature
+            dset.units = self.krg_units
+            dset.coordinates = "latitude longitude"
+            dset.source_variable = self.orig_name
+
+        if (self.s is not None) and (self.krg is not None):
+            dset = grp_4.createVariable(self.krg_name.split('/')[-1]+"_relative_uncertainty", dt, ('londim','latdim'))
+            # initialize dataset values here
+            tmp = np.zeros(self.s.shape)
+            tmp[:,:] = np.sqrt(self.s)/self.krg
+            tmp[np.where(tmp == np.inf)] = np.nan
+            dset[:,:] = tmp 
+            # Creating attributes for /HDFEOS/NOGGIN/KrigeResult1/Data Fields/temperature
+            dset.units = 'dimensionless'
+            dset.coordinates = "latitude longitude"
+            dset.source_variable = self.orig_name
+        
+        # Group: /HDFEOS INFORMATION
+        grp_1 = f.createGroup('HDFEOS INFORMATION')
+        
+        # Dataset: /HDFEOS INFORMATION/StructMetadata.0
+        dt = np.dtype('S1')
+        dset = grp_1.createVariable('StructMetadata.0', dt)
+        # initialize dataset values here
+        
+        # METADATA STRUCTURE
+        
+        # Close the file
+        f.close()
+        
+        # dset = f.create_dataset('metadata.json'\
+        #                         ,data=json.dumps(\
+        #                                          {"npts":self.npts\
+        #                                           ,"log_calc":self.log_calc\
+        #                                           ,"note":self.note\
+        #                                           ,"vg_name":self.vg_name\
+        #                                          }\
+        #                                          ,sort_keys=True))
+        
+        # dset = f.create_dataset(self.zVariableName,data=self.z)
+        # dset = f.create_dataset(self.zVariableName+'_s',data=self.s)
+        # dset = f.create_dataset('x',data=self.x)
+        # dset = f.create_dataset('y',data=self.y)
 
 
 ###########################################################################

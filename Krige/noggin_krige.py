@@ -39,7 +39,6 @@ You should have received a copy of the GNU General Public License along with thi
 import argparse
 from collections import Counter
 import json
-from types import SimpleNamespace
 import math
 import os
 import sys
@@ -107,7 +106,7 @@ parser.add_argument('-o','--output_filename'\
                     ,dest='output_filename'\
                     ,type=str\
                     ,help='The output file for the results')
-parser.set_defaults(output_filename = 'noggin_krige.hdf')
+parser.set_defaults(output_filename = 'noggin_krige.nc')
 
 parser.add_argument('-s','--sampling_fraction'\
                     ,dest='sampling_fraction'\
@@ -221,23 +220,15 @@ krige_converged = False
 _verbose = args.verbose
 _debug   = args.debug
 
-if _verbose:
-    print('verbose: ',_verbose)
-
 if _flag_error_exit:
     print('noggin_krige: error sys.exit(1)')
     sys.exit(1)
     
 _save_index = False
-_read_index = True
-_exit_after_save_index = True
 
 SRC_DIRECTORY=args.inputDirectory
 DATAFIELDNAME=args.datafieldname
 SRC_FILE_LIST=args.src_file_list
-
-if _verbose:
-    print('SRC_FILE_LIST',SRC_FILE_LIST)
 
 ###########################################################################
 #
@@ -274,19 +265,22 @@ if _sampling_fraction is None:
 else:
     lores_npts = None
 
-def object_decoder(obj):
-    if '__type__' in obj and obj['__type__'] == 'User':
-        return User(obj['name'], obj['username'])
-    return obj
 
 ###########################################################################
 # Start with MetaData sketch.
-# Try to read an index
-geofile = ""
-src_file_list=[]
-geo_file_list=[]
-geo_file_dict={}
-if True:
+# Construct bounding box index.
+src_file_list = []
+geo_file_list = []
+if SRC_FILE_LIST is None:
+    src_file_list = [f for f in os.listdir(SRC_DIRECTORY)
+                        if (lambda x:
+                                '.hdf' in x
+                                or '.HDF.' in x
+                                or '.he5' in x
+                                or '.h5' in x
+                                or '.nc' in x
+                                )(f)]
+else:
     with open(SRC_FILE_LIST,'r') as f:
         while(True):
             line = f.readline()
@@ -301,118 +295,50 @@ if True:
                 pass
             src_file_list.append(src)
             geo_file_list.append(geo)
-            geo_file_dict[src]=geo
-        
-modis_BoundingBoxes = None
-INDEX_FILE='src_file_index.json'
-if _read_index:
-    print('Attempting to read index file: '+INDEX_FILE)
-    modis_BoundingBoxes = {}
-    with open(INDEX_FILE,'r') as f:
-        # modis_BoundingBoxes_ = json.loads(f.read(),object_hook=lambda d: SimpleNamespace(**d))
-        modis_BoundingBoxes_ = json.loads(f.read(),object_hook=object_decoder)
-        # modis_BoundingBoxes_ = json.loads(f.read())
-        # print('modis_BoundingBoxes: type  ',type(modis_BoundingBoxes_))
-        # print('modis_BoundingBoxes:       ',modis_BoundingBoxes_)
-        # print('mBB: ',modis_BoundingBoxes_['VNP02IMG.A2021182.0000.001.2021182064359.nc'])
-        for i in modis_BoundingBoxes_.keys():
-            v = json.loads(modis_BoundingBoxes_[i])
-            # print('i:    ',i)
-            # print('v:    ',v)
-            # print('vt:   ',type(v))
-            # print('v1:   ',v[1])
-            # print('v1t:  ',type(v[1]))
-            # print('v1p0: ',v[1]['p0'])
-            p0 = df.Point(lonlat_degrees = v[1]['p0'])
-            p1 = df.Point(lonlat_degrees = v[1]['p1'])
-            modis_BoundingBoxes[i] = df.BoundingBox(p=(p0,p1))
-            # print('x: ',modis_BoundingBoxes[i])
-            print('i,file,lon_lats: ',i,v[0],modis_BoundingBoxes[i].lons_lats())
-                  
-        # print('modis_BoundingBoxes: type  ',type(modis_BoundingBoxes))
-        # print('modis_BoundingBoxes:       ',modis_BoundingBoxes)
-        
-else:    
-    ###########################################################################
-    # Start with MetaData sketch.
-    # Construct bounding box index.
-    src_file_list = []
-    geo_file_list = []
-    if SRC_FILE_LIST is None:
-        if _verbose:
-            print('Checking %s for files.'%SRC_DIRECTORY)
     
-        src_file_list = [f for f in os.listdir(SRC_DIRECTORY)
-                            if (lambda x:
-                                    '.hdf' in x
-                                    or '.HDF.' in x
-                                    or '.he5' in x
-                                    or '.h5' in x
-                                    or '.nc' in x
-                                    )(f)]
-        print('src_file_list: ',src_file_list)
-    else:
-        with open(SRC_FILE_LIST,'r') as f:
-            while(True):
-                line = f.readline()
-                if not line:
-                    break
-                line = line.rstrip()
-                try:
-                    src,geo = line.split(' ')
-                except ValueError:
-                    src = line
-                    geo = ""
-                    pass
-                src_file_list.append(src)
-                geo_file_list.append(geo)
-        
-    if len(src_file_list) == 0:
-        print('noggin_krige: error: no data files files recognized in '+SRC_DIRECTORY+', exiting')
-        sys.exit(1)
-    modis_BoundingBoxes = {}
-    if _save_index:
-        modis_BoundingBoxes_json = {}
-    bb = df.BoundingBox()
-    
+if len(src_file_list) == 0:
+    print('noggin_krige: error: no HDF files found in '+SRC_DIRECTORY+', exiting')
+    sys.exit(1)
+modis_BoundingBoxes = {}
+if _save_index:
+    modis_BoundingBoxes_json = {}
+bb = df.BoundingBox()
+
+if _verbose:
+    print('noggin_krige: number of files to load: '+str(len(src_file_list)))
+geo_k = 0
+for i in src_file_list:
     if _verbose:
-        print('noggin_krige: number of files to load: '+str(len(src_file_list)))
-    geo_k = 0
-    for i in src_file_list:
-        if _verbose:
-            print('noggin_krige: loading '+str(i)+' from '+str(SRC_DIRECTORY))
-    
-        geofile = ""
-        if len(geo_file_list) > 0:
-            geofile = geo_file_list[geo_k]
-            geo_k+=1
-    
-        modis_obj = df.DataField(\
-                                     datafilename=i\
-                                     ,datafieldname=DATAFIELDNAME\
-                                     ,srcdirname=SRC_DIRECTORY\
-                                     ,hack_branchcut_threshold=200\
-                                     ,geofile=geofile\
-                                     )
-        bb = bb.union(modis_obj.bbox)
-        modis_BoundingBoxes[i]=modis_obj.bbox
-        if _save_index:
-            modis_BoundingBoxes_json[i]=modis_obj.bbox.to_json()
-    
-        if _debug:
-            print('noggin_krige:debug: loading '+str(i)+' from '+str(SRC_DIRECTORY))        
-            # print 'noggin_krige:debug:xml: ',bb.to_xml()
-            print('noggin_krige:debug:json: ',bb.to_json())
-    
+        print('noggin_krige: loading '+str(i)+' from '+str(SRC_DIRECTORY))
+
+    geofile = ""
+    if len(geo_file_list) > 0:
+        geofile = geo_file_list[geo_k]
+        geo_k+=1
+
+    modis_obj = df.DataField(\
+                                 datafilename=i\
+                                 ,datafieldname=DATAFIELDNAME\
+                                 ,srcdirname=SRC_DIRECTORY\
+                                 ,hack_branchcut_threshold=200\
+                                 ,geofile=geofile\
+                                 )
+    bb = bb.union(modis_obj.bbox)
+    modis_BoundingBoxes[i]=modis_obj.bbox
     if _save_index:
-        if _verbose:
-            print('writing to '+INDEX_FILE)
-            # with open(SRC_DIRECTORY+'modis_BoundingBoxes.json','w') as f:
-        with open(INDEX_FILE,'w') as f:
-            json.dump(modis_BoundingBoxes_json,f)
-        if _exit_after_save_index:
-            print('exiting after save_index')
-            sys.exit(0)
+        modis_BoundingBoxes_json[i]=modis_obj.bbox.to_json()
+
+    if _debug:
+        print('noggin_krige:debug: loading '+str(i)+' from '+str(SRC_DIRECTORY))        
+        # print 'noggin_krige:debug:xml: ',bb.to_xml()
+        print('noggin_krige:debug:json: ',bb.to_json())
+
+if _save_index:
+    if _verbose:
+        print('writing to '+INDEX_FILE)
+        # with open(SRC_DIRECTORY+'modis_BoundingBoxes.json','w') as f:
+    with open(INDEX_FILE,'w') as f:
+        json.dump(modis_BoundingBoxes_json,f)
 
 ###########################################################################
 # Move to KrigeSketch conventions
@@ -748,8 +674,7 @@ for krigeBox in targetBoxes:
                                                                      ,datafieldname=DATAFIELDNAME\
                                                                      ,srcdirname=SRC_DIRECTORY\
                                                                      ,hack_branchcut_threshold=200\
-                                                                     ,geofile=geo_file_dict[i]\
-#                                                                     ,geofile=geofile\
+                                                                     ,geofile=geofile\
                                                     )
                                         modis_objs.append(modis_obj)
 
@@ -1080,7 +1005,7 @@ if not cycle:
     # TODO The following is currently broken
     # TODO Apparently SWATH does not mean irregular.
     if True:
-        print('noggin_krige saving to HDF')
+        print('noggin_krige saving to NC')
         # Now, we use tgt_X1d and tgt_Y1d
         ny = tgt_Y1d.size
         nx = tgt_X1d.size

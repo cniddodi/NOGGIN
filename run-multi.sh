@@ -1,15 +1,14 @@
 #!/bin/bash
 
-lonA=-140
-lonB=-120
+lonA=19
+lonB=29
 
 # latA=-27
-# latA=-15
-latA=-88
-latB=-68
+latA=-15
+latB=80
 
-dlon=2
-dlat=2
+dlon=1
+dlat=1
 
 resolution=0.05
 
@@ -18,6 +17,6 @@ for lat0 in `seq $latA $dlat $latB`; do
 	# echo $dlon $dlat
 	(( lon1 = lon0 + dlon ))
 	(( lat1 = lat0 + dlat ))
-	./run-vnp02.sh $lon0 $lat0 $lon1 $lat1 $resolution
+	bash /home/chaitra/Desktop/iospec_test/examples/netcdf/NOGGIN/run-vnp02.sh $lon0 $lat0 $lon1 $lat1 $resolution
     done
 done

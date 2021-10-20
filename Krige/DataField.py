@@ -21,8 +21,8 @@ You should have received a copy of the GNU General Public License along with thi
 import json
 import os
 import numpy as np
-from pyhdf.SD import SD, SDC
-import h5py as h5
+#from pyhdf.SD import SD, SDC
+#import h5py as h5
 from netCDF4 import Dataset
 
 import matplotlib as mpl

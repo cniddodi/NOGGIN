@@ -27,8 +27,8 @@ usage() {
 [[ $# -lt 5 ]] && usage
 
 #
-export PYTHONPATH=/home/mrilee/git/NOGGIN-PyKrige:/home/mrilee/git/NOGGIN
-export NOGGIN_DATA_SRC_DIRECTORY=/home/mrilee/data/VIIRS
+export PYTHONPATH=/home/chaitra/Desktop/iospec_test/examples/netcdf/NOGGIN
+export NOGGIN_DATA_SRC_DIRECTORY=/home/chaitra/Desktop/iospec_test/examples/netcdf/NOGGIN/DATA/VIIRS
 
 ## lon0=+20
 ## lat0=-26
@@ -46,8 +46,9 @@ resolution=$5
 echo
 echo run-vnp02.sh $1 $2 $3 $4 $5
 echo
-outfile=`printf "noggin_krige_%04d_%04d_%04d_%04d.h5" ${lon0} ${lat0} ${lon1} ${lat1}`
+outfile=`printf "noggin_krige_%04d_%04d_%04d_%04d.nc" ${lon0} ${lat0} ${lon1} ${lat1}`
 echo "outfile: ${outfile}"
+echo "outfile: ${outfile}" >> skip_list.txt
 # exit 0
 
 # Execute the calculation. Krige to a default 1-degree lon-lat grid.
@@ -59,7 +60,7 @@ echo "outfile: ${outfile}"
 # -v # Verbose output
 # -l <number of lags in variogram fit>
 #
-python ~/git/NOGGIN/Krige/noggin_krige.py \
+python3 /home/chaitra/Desktop/iospec_test/examples/netcdf/NOGGIN/Krige/noggin_krige.py \
        -f src_file_list \
        -d ${NOGGIN_DATA_SRC_DIRECTORY}/ \
        -n observation_data/l05 \
