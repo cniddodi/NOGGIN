@@ -452,10 +452,10 @@ The shape of the orig_? arrays is used to format the datasets written to output 
 type_hint == 'swath' => Save data as a fake swath.
 
 type_hint == 'grid'  => Try to reinterpret the POINT (irregular) data grid type as a rectangular grid and save it to HDF as a grid."""
-        if self.type_hint == 'grid':
-            self.save_grid()
-        elif self.type_hint == 'swath':
+        if self.type_hint == 'swath':
             self.save_swath()
+        elif self.type_hint == 'grid':
+            self.save_grid()
         else:
             print('krigeHDF.save type_hint=="'+str(type_hint)+'" not understood. Returning')
 
@@ -482,11 +482,22 @@ type_hint == 'grid'  => Try to reinterpret the POINT (irregular) data grid type 
         # Group: /HDFEOS/NOGGIN/KrigeResult2
         grp_3 = grp_2.createGroup('KrigeResult2')
 
-        #if self.config is not None:
-        #    grp_4 = grp_3.createGroup('KrigeCalculationConfiguration')
-        #    # TODO: Encapsulate this logic in a configuration object.
-        #    dset = grp_4.create_dataset('configuration.json',data=self.config.as_json())
-        #    dset.attrs['json'] = self.config.as_json()
+        if self.config is not None:
+            grp_4 = grp_3.createGroup('KrigeCalculationConfiguration')
+            # TODO: Encapsulate this logic in a configuration object.
+            # self.config.as_json() is numpy array => 'data' parameter of h5py create_dataset() => https://docs.h5py.org/en/stable/high/dataset.html
+            dt = (self.config.as_json()).dtype
+            npdims = (self.config.as_json()).shape
+            vardims = set()
+            di = 1
+            for ndim in npdims:
+                dimname = 'd'+str(di)
+                grp_4.createDimension(dimname, ndim)
+                vardims.add(dimname)
+                di = di + 1
+            dset = grp_4.createVariable('configuration.json', dt, vardims)
+            dset[:] = (self.config.as_json())[:]
+            dset.json = 'config_json' #self.config.as_json()
     
         # Group: /HDFEOS/NOGGIN/KrigeResult2/Data Fields
         grp_4 = grp_3.createGroup('Data Fields')
@@ -639,11 +650,22 @@ type_hint == 'grid'  => Try to reinterpret the POINT (irregular) data grid type 
         # Group: /HDFEOS/NOGGIN/KrigeResult1
         grp_3 = grp_2.createGroup('KrigeResult1')
 
-        #if self.config is not None:
-        #    grp_4 = grp_3.create_group('KrigeCalculationConfiguration')
-        #    # TODO: Encapsulate this logic in a configuration object.
-        #    dset = grp_4.create_dataset('configuration.json',data=self.config.as_json())
-        #    dset.attrs['json'] = self.config.as_json()
+        if self.config is not None:
+            grp_4 = grp_3.createGroup('KrigeCalculationConfiguration')
+            # TODO: Encapsulate this logic in a configuration object.
+            # self.config.as_json() is numpy array => 'data' parameter of h5py create_dataset() => https://docs.h5py.org/en/stable/high/dataset.html
+            dt = (self.config.as_json()).dtype
+            npdims = (self.config.as_json()).shape
+            vardims = set()
+            di = 1
+            for ndim in npdims:
+                dimname = 'd'+str(di)
+                grp_4.createDimension(dimname, ndim)
+                vardims.add(dimname)
+                di = di + 1
+            dset = grp_4.createVariable('configuration.json', dt, vardims)
+            dset[:] = (self.config.as_json())[:]
+            dset.json = 'config_json' #self.config.as_json()
         
         # Group: /HDFEOS/SWATHS/Swath2953/Geolocation Fields (HPD original)
         # Group: /HDFEOS/NOGGIN/KrigeResult1/Geolocation Fields
@@ -685,7 +707,6 @@ type_hint == 'grid'  => Try to reinterpret the POINT (irregular) data grid type 
         grp_4 = grp_3.createGroup('Data Fields')
         grp_4.createDimension('latdim', ny)
         grp_4.createDimension('londim', nx)
-        grp_4.createDimension('timdim', 1)
 
         if self.orig_and_krg is not None:
             # Dataset: /HDFEOS/NOGGIN/KrigeResult1/Data Fields/temperature

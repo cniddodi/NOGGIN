@@ -24,7 +24,7 @@ import matplotlib.pyplot as plt
 
 datafile="VNP02IMG.A2021182.0000.001.2021182064359.nc"
 geofile ="VNP03IMG.A2021182.0000.001.2021182063427.nc"
-srcdir="/home/chaitra/Desktop/iospec_test/examples/netcdf/NOGGIN/DATA/VIIRS/"
+srcdir="/Users/mrilee/Dropbox/data/VIIRS/"
 
 if __name__ == "__main__":
     print('hello world')
@@ -43,3 +43,5 @@ if __name__ == "__main__":
     # fig_gen = fig_generator(1,1)
     df.scatterplot(title='vnp02',colorbar=True,marker_size=7,vmin=mn,vmax=mx*0.25,sample=0.001)
     plt.show()
+
+    
