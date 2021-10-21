@@ -48,7 +48,7 @@ echo run-vnp02.sh $1 $2 $3 $4 $5
 echo
 outfile=`printf "noggin_krige_%04d_%04d_%04d_%04d.nc" ${lon0} ${lat0} ${lon1} ${lat1}`
 echo "outfile: ${outfile}"
-echo "outfile: ${outfile}" >> skip_list.txt
+echo "${outfile}" >> skip_list.txt
 # exit 0
 
 # Execute the calculation. Krige to a default 1-degree lon-lat grid.
