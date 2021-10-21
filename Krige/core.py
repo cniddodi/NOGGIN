@@ -485,19 +485,10 @@ type_hint == 'grid'  => Try to reinterpret the POINT (irregular) data grid type 
         if self.config is not None:
             grp_4 = grp_3.createGroup('KrigeCalculationConfiguration')
             # TODO: Encapsulate this logic in a configuration object.
-            # self.config.as_json() is numpy array => 'data' parameter of h5py create_dataset() => https://docs.h5py.org/en/stable/high/dataset.html
-            dt = (self.config.as_json()).dtype
-            npdims = (self.config.as_json()).shape
-            vardims = set()
-            di = 1
-            for npdim in npdims:
-                dimname = 'jsondim'+str(di)
-                grp_4.createDimension(dimname, npdim)
-                vardims.add(dimname)
-                di = di + 1
-            dset = grp_4.createVariable('configuration.json', dt, vardims)
-            dset[:] = (self.config.as_json())[:]
-            dset.json = 'config_json' #self.config.as_json()
+            # self.config.as_json() is 'str'
+            dt = np.dtype('S'+str(len(self.config.as_json())))
+            dset = grp_4.createVariable('configuration.json', dt)
+            dset = self.config.as_json()
     
         # Group: /HDFEOS/NOGGIN/KrigeResult2/Data Fields
         grp_4 = grp_3.createGroup('Data Fields')
@@ -653,19 +644,10 @@ type_hint == 'grid'  => Try to reinterpret the POINT (irregular) data grid type 
         if self.config is not None:
             grp_4 = grp_3.createGroup('KrigeCalculationConfiguration')
             # TODO: Encapsulate this logic in a configuration object.
-            # self.config.as_json() is numpy array => 'data' parameter of h5py create_dataset() => https://docs.h5py.org/en/stable/high/dataset.html
-            dt = (self.config.as_json()).dtype
-            npdims = (self.config.as_json()).shape
-            vardims = set()
-            di = 1
-            for npdim in npdims:
-                dimname = 'jsondim'+str(di)
-                grp_4.createDimension(dimname, npdim)
-                vardims.add(dimname)
-                di = di + 1
-            dset = grp_4.createVariable('configuration.json', dt, vardims)
-            dset[:] = (self.config.as_json())[:]
-            dset.json = 'config_json' #self.config.as_json()
+            # self.config.as_json() is 'str'
+            dt = np.dtype('S'+str(len(self.config.as_json())))
+            dset = grp_4.createVariable('configuration.json', dt)
+            dset = self.config.as_json()
         
         # Group: /HDFEOS/SWATHS/Swath2953/Geolocation Fields (HPD original)
         # Group: /HDFEOS/NOGGIN/KrigeResult1/Geolocation Fields
