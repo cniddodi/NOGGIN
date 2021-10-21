@@ -959,7 +959,7 @@ custom_loader=None.  A callable(self) that allows a user to write a
         # self.m.drawmeridians(np.arange(-180, 181., 30), labels=[0, 0, 0, 1])
 
     def show(self):
-        plt.show()
+        pass #plt.show()
         
     def colormesh(self\
                       ,vmin=np.nan,vmax=np.nan
@@ -995,8 +995,8 @@ custom_loader=None.  A callable(self) that allows a user to write a
         fig = plt.gcf()
         # pngfile = "{0}.py.png".format(basename)
         # fig.savefig(pngfile)
-        if plt_show:
-            plt.show()
+        #if plt_show:
+            #plt.show()
 
     def scatterplot(self
                     ,marker_size=1
@@ -1089,8 +1089,8 @@ custom_loader=None.  A callable(self) that allows a user to write a
         fig = plt.gcf()
         # pngfile = "{0}.py.png".format(basename)
         # fig.savefig(pngfile)
-        if plt_show:
-            plt.show()
+        #if plt_show:
+            #plt.show()
 
     def get_figax(self):
         return self.figax
@@ -1364,7 +1364,7 @@ def demo_obj(show=False):
     # test_obj_1.colormesh(vmin=1.0,vmax=3.0)                                           
     test_obj_1.scatterplot(vmin=1.0,vmax=3.0,title='scatter',colorbar=True)
 
-    plt.show()
+    #plt.show()
 
 
     

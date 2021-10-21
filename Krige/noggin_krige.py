@@ -1202,7 +1202,7 @@ if not cycle:
             )
     
         kHDF.save()
-        print('noggin_krige: finished saving to HDF')
+        print('noggin_krige: finished saving to NC')
     
     #     # Display results
     #     fig_gen = fig_generator(1,1)
