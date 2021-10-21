@@ -490,9 +490,9 @@ type_hint == 'grid'  => Try to reinterpret the POINT (irregular) data grid type 
             npdims = (self.config.as_json()).shape
             vardims = set()
             di = 1
-            for ndim in npdims:
-                dimname = 'd'+str(di)
-                grp_4.createDimension(dimname, ndim)
+            for npdim in npdims:
+                dimname = 'jsondim'+str(di)
+                grp_4.createDimension(dimname, npdim)
                 vardims.add(dimname)
                 di = di + 1
             dset = grp_4.createVariable('configuration.json', dt, vardims)
@@ -658,9 +658,9 @@ type_hint == 'grid'  => Try to reinterpret the POINT (irregular) data grid type 
             npdims = (self.config.as_json()).shape
             vardims = set()
             di = 1
-            for ndim in npdims:
-                dimname = 'd'+str(di)
-                grp_4.createDimension(dimname, ndim)
+            for npdim in npdims:
+                dimname = 'jsondim'+str(di)
+                grp_4.createDimension(dimname, npdim)
                 vardims.add(dimname)
                 di = di + 1
             dset = grp_4.createVariable('configuration.json', dt, vardims)
