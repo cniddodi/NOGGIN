@@ -28,7 +28,7 @@ usage() {
 
 #
 export PYTHONPATH=/home/chaitra/Desktop/iospec_test/examples/netcdf/NOGGIN
-export NOGGIN_DATA_SRC_DIRECTORY=/home/chaitra/Desktop/iospec_test/examples/netcdf/NOGGIN/DATA/VIIRS
+export NOGGIN_DATA_SRC_DIRECTORY=/home/chaitra/Desktop/iospec_test/examples/netcdf/NOGGIN/DATA
 
 ## lon0=+20
 ## lat0=-26
