@@ -1040,7 +1040,7 @@ if True:
     print('noggin_krige: finished saving to HDF')
 
     # Display results
-    fig_gen = fig_generator(1,1)
+    '''fig_gen = fig_generator(1,1)
     display_obj = df.DataField(\
                             data = s\
                             ,longitude = x\
@@ -1048,8 +1048,8 @@ if True:
                             )
 #                            ,longitude = tgt_X1d\
 #                            ,latitude  = tgt_Y1d\
-    display_obj.scatterplot(title='s',colorbar=True,marker_size=7)
-    plt.show()
+    display_obj.scatterplot(title='s',colorbar=True,marker_size=7)'''
+    #plt.show()
 
 print( strftime("%a, %d %b %Y %H:%M:%S +0000", gmtime()))
 end_time = time.time()
