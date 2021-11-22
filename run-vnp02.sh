@@ -29,6 +29,7 @@ usage() {
 #
 export PYTHONPATH=/home/chaitra/Desktop/iospec_test/examples/netcdf/NOGGIN
 export NOGGIN_DATA_SRC_DIRECTORY=/home/chaitra/Desktop/iospec_test/examples/netcdf/NOGGIN/DATA
+export SRC_FILE_LIST=src_file_list_3
 
 ## lon0=+20
 ## lat0=-26
@@ -48,8 +49,12 @@ echo run-vnp02.sh $1 $2 $3 $4 $5
 echo
 outfile=`printf "noggin_krige_%04d_%04d_%04d_%04d.nc" ${lon0} ${lat0} ${lon1} ${lat1}`
 echo "outfile: ${outfile}"
-echo "${outfile}" >> skip_list.txt
 # exit 0
+
+if [ -f "${outfile}" ]; then
+    echo "${outfile} exists, exiting"
+    exit 1
+fi
 
 # Execute the calculation. Krige to a default 1-degree lon-lat grid.
 #
@@ -59,23 +64,27 @@ echo "${outfile}" >> skip_list.txt
 # -m <variogram functional model>
 # -v # Verbose output
 # -l <number of lags in variogram fit>
+# -I <number of iterations for varigram fit. default is 3.>
 #
 python3 /home/chaitra/Desktop/iospec_test/examples/netcdf/NOGGIN/Krige/noggin_krige.py \
-       -f src_file_list \
+       -f ${SRC_FILE_LIST} \
        -d ${NOGGIN_DATA_SRC_DIRECTORY}/ \
        -n observation_data/l05 \
-       -m spherical \
+       -m gamma_rayleigh_nuggetless_variogram_model \
        -R -b ${lon0} ${lat0} ${lon1} ${lat1} \
        -r ${resolution} \
        -S 2000 \
        -l 4 \
        --lw_scale 2 \
-       --Beta 3.0 \
+       --Beta 30.0 \
+       -I 1 \
        -v -x \
        --output_filename ${outfile}
 
 # Betas...
+# As beta decreases the sampling distribution narrows.
 # 1.5 lots of divergences
+# 4 long time...
 
 # lw_scale
 #
@@ -86,3 +95,4 @@ python3 /home/chaitra/Desktop/iospec_test/examples/netcdf/NOGGIN/Krige/noggin_kr
 # Maybe try -m spherical, might be more robust...
 #       -m gamma_rayleigh_nuggetless_variogram_model \
 #       -m spherical \
+

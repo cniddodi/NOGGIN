@@ -126,6 +126,12 @@ parser.add_argument('-l','--variogram_bin_number'\
 parser.set_defaults(variogram_nlags=8)
 # parser.set_defaults(variogram_nlags=12)
 
+parser.add_argument('-I','--variogram_max_iter'
+                    ,dest='variogram_max_iter'
+                    ,type=int
+                    ,help='The maximum number of iterations allowed to find a variogram.')
+parser.set_defaults(variogram_max_iter=3)
+
 parser.add_argument('-v','--verbose'\
                     ,dest='verbose'\
                     ,action='store_true'\
@@ -274,6 +280,10 @@ if _sampling_fraction is None:
 else:
     lores_npts = None
 
+max_iter_start = args.variogram_max_iter
+
+# For json decoding cf. https://stackoverflow.com/questions/6578986/how-to-convert-json-data-into-a-python-object
+#
 def object_decoder(obj):
     if '__type__' in obj and obj['__type__'] == 'User':
         return User(obj['name'], obj['username'])
@@ -327,7 +337,7 @@ if _read_index:
             p1 = df.Point(lonlat_degrees = v[1]['p1'])
             modis_BoundingBoxes[i] = df.BoundingBox(p=(p0,p1))
             # print('x: ',modis_BoundingBoxes[i])
-            print('i,file,lon_lats: ',i,v[0],modis_BoundingBoxes[i].lons_lats())
+            # print('i,file,lon_lats: ',i,v[0],modis_BoundingBoxes[i].lons_lats())
                   
         # print('modis_BoundingBoxes: type  ',type(modis_BoundingBoxes))
         # print('modis_BoundingBoxes:       ',modis_BoundingBoxes)
@@ -447,9 +457,11 @@ hires_calc = []
 # npts_adapt_flag    = True # 
 npts_increase_flag = True
 # npts_last_kr_s = 0
+
+# max_iter_start is set via args.variogram_max_iter above.
 # max_iter_start = 5
 # max_iter_start = 8
-max_iter_start = 3
+# max_iter_start = 3
 k = -1
 
 divergence_threshold = 1.5
@@ -719,13 +731,21 @@ for krigeBox in targetBoxes:
             src_data   = {}
             modis_objs = []
             # for i,v in boxes.iteritems():
+            once = True
+            max_granules=4
             for i,v in boxes.items():
                 i = str(i)
                 # if i[0:3] in _load_datasets: # Check to see if we're loading something DataField knows about.
-                if True:
+                # TODO Currently loading too much data. Add trimming option to df.DataField. Limit number of modis_obj for now.
+                if len(modis_objs) > max_granules:
+                    if once:
+                        print('Sorry, limiting the number of granules being loaded to '+str(max_granules))
+                        once=False
+                else:
+                # if True:
                     lons,lats = v.lons_lats()
-                    if _debug:
-                        print('v lons_lats: '+str(lons)+', '+str(lats))
+                    # if _debug:
+                    #    print('v lons_lats: '+str(lons)+', '+str(lats))
                     if (np.nanmax(np.abs(lons)) <= 360.0)\
                        and (np.nanmax(np.abs(lats)) <= 90.0):
                         # o = krigeBox.overlap(v)
@@ -751,7 +771,13 @@ for krigeBox in targetBoxes:
                                                                      ,geofile=geo_file_dict[i]\
 #                                                                     ,geofile=geofile\
                                                     )
-                                        modis_objs.append(modis_obj)
+                                        modis_obj.info('100')
+                                        if modis_obj.trim_to(searchBox):
+                                            print('Adding after trim_to for ',i)
+                                            modis_objs.append(modis_obj)
+                                        else:
+                                            print('No overlap after trim_to for ',i,' skipping...')
+                                        modis_obj.info('200')
 
             print('len(modis_objs): ',len(modis_objs))
             #

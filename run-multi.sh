@@ -1,20 +1,31 @@
 #!/bin/bash
 
-lonA=-140
-lonB=-120
+# Tropics
+# latA=-30
+# latB=30
 
-# latA=-27
-# latA=-15
-latA=-88
-latB=-68
+# Near the pole
+# latA=-88
+# latB=-68
 
-dlon=2
-dlat=2
+# Whole planet
+#lonA=-180
+#lonB=180
+#latA=-90
+#latB=90
 
-resolution=0.05
+# Hawaii
+lonA=-165
+lonB=-145
+latA=10
+latB=30
 
-for lat0 in `seq $latA $dlat $latB`; do
-    for lon0 in `seq $lonA $dlon $lonB`; do
+dlon=10
+dlat=10
+resolution=0.25
+
+for lon0 in `seq $lonA $dlon $lonB`; do
+    for lat0 in `seq $latA $dlat $latB`; do
 	# echo $dlon $dlat
 	(( lon1 = lon0 + dlon ))
 	(( lat1 = lat0 + dlat ))
