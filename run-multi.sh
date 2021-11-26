@@ -9,19 +9,21 @@
 # latB=-68
 
 # Whole planet
-#lonA=-180
-#lonB=180
-#latA=-90
-#latB=90
+lonA=-180
+lonB=180
+latA=-90
+latB=90
+dlon=5
+dlat=5
 
 # Hawaii
-lonA=-165
-lonB=-145
-latA=10
-latB=30
+#lonA=-165
+#lonB=-145
+#latA=10
+#latB=30
+#dlon=10
+#dlat=10
 
-dlon=10
-dlat=10
 resolution=0.25
 
 for lon0 in `seq $lonA $dlon $lonB`; do
