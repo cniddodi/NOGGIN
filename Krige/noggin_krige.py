@@ -235,7 +235,8 @@ if _flag_error_exit:
     sys.exit(1)
     
 _save_index = False
-_read_index = True
+#_read_index = True
+_read_index = False
 _exit_after_save_index = True
 
 SRC_DIRECTORY=args.inputDirectory
