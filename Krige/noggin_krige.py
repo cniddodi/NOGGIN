@@ -235,8 +235,7 @@ if _flag_error_exit:
     sys.exit(1)
     
 _save_index = False
-#_read_index = True
-_read_index = False
+_read_index = True
 _exit_after_save_index = True
 
 SRC_DIRECTORY=args.inputDirectory
@@ -734,7 +733,11 @@ for krigeBox in targetBoxes:
             # for i,v in boxes.iteritems():
             once = True
             max_granules=4
-            for i,v in boxes.items():
+            #for i,v in boxes.items():
+            # ordered traversal to make filenames and file offsets accessed same across all runs for same inputs
+            sorted_filenames = sorted(list(boxes.keys()))
+            for i in sorted_filenames:
+                v = boxes[i]
                 i = str(i)
                 # if i[0:3] in _load_datasets: # Check to see if we're loading something DataField knows about.
                 # TODO Currently loading too much data. Add trimming option to df.DataField. Limit number of modis_obj for now.
