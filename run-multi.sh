@@ -7,16 +7,16 @@
 #latB=30
 
 # config2
-lonA=-150
-lonB=-110
-latA=-60
-latB=-20
+#lonA=-150
+#lonB=-110
+#latA=-60
+#latB=-20
 
 # config3
-#lonA=20
-#lonB=113
-#latA=-10
-#latB=103
+lonA=20
+lonB=107
+latA=-10
+latB=78
 
 dlon=10
 dlat=10
