@@ -5,13 +5,14 @@
 #lonB=-145
 #latA=10
 #latB=30
+#dlon=10
+#dlat=10
 
 # config2
 #lonA=-150
 #lonB=-110
 #latA=-60
 #latB=-20
-
 #dlon=10
 #dlat=10
 
