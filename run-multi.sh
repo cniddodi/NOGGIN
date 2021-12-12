@@ -12,14 +12,17 @@
 #latA=-60
 #latB=-20
 
+#dlon=10
+#dlat=10
+
 # config3
 lonA=20
 lonB=107
 latA=-10
 latB=78
+dlon=5
+dlat=5
 
-dlon=10
-dlat=10
 resolution=0.25
 
 for lon0 in `seq $lonA $dlon $lonB`; do
